@@ -1,14 +1,22 @@
-`timescale 1ns/1ps
 // UART Testbench
+`timescale 1ns/1ps
+
 module uart_tb;
 
-    reg clk, rst, tx_start;
+    reg clk, 
+    reg rst, 
+    reg tx_start;
     reg [7:0] tx_data;
-    reg par_en, par_ty;
-    wire tx_ext, tx_busy;
+    reg par_en,         // Parity Enable
+    reg par_ty;         // Parity Type
+    wire tx_ext, 
+    wire tx_busy;
     wire [7:0] rx_data;
-    wire rx_done, parity_error, framing_error;
+    wire rx_done, 
+    wire parity_error, 
+    wire framing_error;
 
+    // DUT
     uart_top dut (
         .clk(clk),
         .rst(rst),
@@ -27,10 +35,34 @@ module uart_tb;
   
     initial clk = 0;
     always #10 clk = ~clk;
+  
+    reg [63:0] tx_state_name;
+    reg [63:0] rx_state_name;
+
+    always @(*) begin
+        // Tx state
+        case (dut.tx_i.state) 
+            0: tx_state_name = "IDLE";
+            1: tx_state_name = "START";
+            2: tx_state_name = "DATA";
+            3: tx_state_name = "PARITY";
+            4: tx_state_name = "STOP";
+            default: tx_state_name = "IDLE";
+        endcase
+
+        // Rx state
+        case (dut.rx_i.state)
+            0: rx_state_name = "IDLE";
+            1: rx_state_name = "START";
+            2: rx_state_name = "DATA";
+            3: rx_state_name = "PARITY";
+            4: rx_state_name = "STOP";
+            default: rx_state_name = "IDLE";
+        endcase
+    end
 
     initial begin
-      $monitor("Time = %0t| Tx DATA = %h| Tx = %b| Tx BUSY = %b|Rx Data =  %h| Rx Done = %b| PAR_ERR = %b| FRM_ERR = %b",$time, tx_data, tx_ext, tx_busy,
-rx_data, rx_done, parity_error, framing_error);
+      $monitor("Time = %0t| Tx DATA = %h (%b)| Tx State = %s (%0d) | Tx = %b| Tx BUSY = %b | Rx Data =  %h| Rx State = %s (%0d) | Rx Done = %b| PAR_ERR = %b| FRM_ERR = %b",$time, tx_data, tx_data, tx_state_name, dut.tx_i.state, tx_ext, tx_busy, rx_data, rx_state_name, dut.rx_i.state, rx_done, parity_error, framing_error);
     end
 
     initial begin
@@ -43,14 +75,17 @@ rx_data, rx_done, parity_error, framing_error);
 
         #100;
         rst = 1;
-        $display("T=%0t | UART Function Reset", $time);
+      
+        $display("\nT = %0t | UART Function Reset\n", $time);
 
         // BYTE 1
         send_byte(8'hAF);
 
         // BYTE 2
         send_byte(8'h3C);
-
+      
+        // BYTE 3
+        send_byte(8'hBB);
         #200_000;
         $display("T=%0t | SIMULATION PASSED", $time);
         $finish;
@@ -58,23 +93,24 @@ rx_data, rx_done, parity_error, framing_error);
 
   task send_byte(input [7:0] data);
     begin
-        wait(!tx_busy);     
+        wait(!tx_busy);
         @(posedge clk);
         tx_data = data;
         tx_start = 1;
-        wait(tx_busy);       
-        repeat(2) @(posedge clk); 
+        @(posedge tx_busy);       
+        $display("\nT=%0t | Sending: %h\n", $time, data);
         tx_start = 0;
-        
-        $display("T=%0t | Sending: 0x%h", $time, data);
         wait_rx_done_safe();
+        
     end
   endtask
 
   task wait_rx_done_safe;
-      @(posedge rx_done);
-      $display("Time = %0t | RX DONE: 0x%h | PAR_ERR=%b | FRM_ERR=%b", $time, rx_data, parity_error, framing_error);    
-      #50_000_000;  
+    @(posedge rx_done);
+        #500;
+        $display("Time = %0t | Rx DONE: %h | PAR_ERR=%b | FRM_ERR=%b",
+                        $time, rx_data, parity_error, framing_error);    
+        #50_000_000;  
   endtask
           
 endmodule
