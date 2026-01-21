@@ -1,13 +1,22 @@
+// Top Module
+
 `include "UART_TX.sv"
 `include "UART_RX.sv"
 `include "UART_BG.sv"
 `timescale 1ns/1ps
 
 module uart_top (
-    input clk, rst, tx_start,
+    input clk, 
+    input rst, 
+    input tx_start,
     input [7:0] tx_data,
-    input par_en, par_ty, rx_ext,
-    output tx_ext, rx_done, parity_error, framing_error,
+    input par_en,         // Parity Enable
+    input par_ty,         // Parity Type
+    input rx_ext,         // Rx Pin
+    output tx_ext,        // Tx Pin
+    output rx_done,       
+    output parity_error, 
+    output framing_error,
     output [7:0] rx_data,
     output tx_busy
 );
