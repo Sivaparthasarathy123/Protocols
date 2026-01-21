@@ -1,6 +1,7 @@
+// UART Baud Generator 
 `timescale 1ns/1ps
-// --- UART Baud Generator ---
-module uart_baud_gen #(
+
+module uart_baud_gen#(
     parameter CLK_FREQ  = 50000000,
     parameter BAUD_RATE = 9600)
 (
